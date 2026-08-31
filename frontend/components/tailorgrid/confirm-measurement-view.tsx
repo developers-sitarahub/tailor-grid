@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { CityModal } from './city-modal'
 import { useCityLocation } from './use-city-location'
+import { SewingLoader } from './sewing-loader'
 import { GARMENT_CATEGORIES, type Screen } from './data'
 import { TrustBar } from './trust-bar'
 import { FindingStudioModal } from './finding-studio-modal'
@@ -358,12 +359,14 @@ export function ConfirmMeasurementView({
     })
   }
 
+  const [isProcessing, setIsProcessing] = useState(false)
+
   const handleProceed = () => {
-    setIsFindingStudio(true)
+    setIsProcessing(true)
   }
 
-  const handleStudioMatched = (matched: StoreOption, orderData: any) => {
-    setIsFindingStudio(false)
+  const handleLoaderComplete = () => {
+    setIsProcessing(false)
     onConfirmMeasurements?.({
       garmentId: selectedGarmentId,
       serviceId: selectedService.id,
@@ -388,6 +391,7 @@ export function ConfirmMeasurementView({
 
   return (
     <div className="min-h-[calc(100vh-68px)] min-h-[calc(100dvh-68px)] flex flex-col justify-between bg-white">
+      <SewingLoader active={isProcessing} durationSeconds={8} onComplete={handleLoaderComplete} />
       <div className="flex-1 flex flex-col justify-center">
         <section className="relative bg-white py-6 sm:py-8 lg:py-10">
           <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
