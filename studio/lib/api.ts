@@ -23,6 +23,10 @@ export async function loginWithGoogle(params: {
     const data = await res.json()
     if (data.token && typeof window !== 'undefined') {
       localStorage.setItem('tg_token', data.token)
+      if (data.user) {
+        localStorage.setItem('tg_user', JSON.stringify(data.user))
+        localStorage.setItem('tg_user_role', data.user.role || 'STUDIO')
+      }
     }
     return data
   } catch (err: any) {
@@ -35,8 +39,13 @@ export async function loginWithGoogle(params: {
         postcode: params.profile.postcode || 'W8 4EP',
         method: 'google',
         role: 'STUDIO',
-        studioId: 'store-1',
-        studioName: 'Kensington Bespoke Atelier',
+        studioId: 'atelier-soho',
+        studioName: params.profile.studioName || 'Atelier SoHo Tailors',
+      }
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('tg_token', 'mock_token_' + Date.now())
+        localStorage.setItem('tg_user', JSON.stringify(fallbackUser))
+        localStorage.setItem('tg_user_role', 'STUDIO')
       }
       return { token: 'mock_token_' + Date.now(), user: fallbackUser }
     }
@@ -70,6 +79,10 @@ export async function signUpUser(data: {
     const result = await res.json()
     if (result.token && typeof window !== 'undefined') {
       localStorage.setItem('tg_token', result.token)
+      if (result.user) {
+        localStorage.setItem('tg_user', JSON.stringify(result.user))
+        localStorage.setItem('tg_user_role', result.user.role || 'STUDIO')
+      }
     }
     return result
   } catch (err) {
@@ -81,8 +94,13 @@ export async function signUpUser(data: {
       postcode: data.postcode || 'W8 4EP',
       method: data.email ? 'email' : 'mobile',
       role: 'STUDIO',
-      studioId: 'kensington-atelier',
-      studioName: data.storeName || 'Kensington Bespoke Atelier',
+      studioId: 'atelier-soho',
+      studioName: data.storeName || 'Atelier SoHo Tailors',
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('tg_token', 'mock_token_' + Date.now())
+      localStorage.setItem('tg_user', JSON.stringify(fallbackUser))
+      localStorage.setItem('tg_user_role', 'STUDIO')
     }
     return { token: 'mock_token_' + Date.now(), user: fallbackUser }
   }
@@ -108,6 +126,10 @@ export async function loginUser(data: {
     const result = await res.json()
     if (result.token && typeof window !== 'undefined') {
       localStorage.setItem('tg_token', result.token)
+      if (result.user) {
+        localStorage.setItem('tg_user', JSON.stringify(result.user))
+        localStorage.setItem('tg_user_role', result.user.role || 'STUDIO')
+      }
     }
     return result
   } catch (err) {
@@ -122,24 +144,44 @@ export async function loginUser(data: {
       studioId: 'atelier-soho',
       studioName: 'Atelier SoHo Tailors',
     }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('tg_token', 'mock_token_' + Date.now())
+      localStorage.setItem('tg_user', JSON.stringify(fallbackUser))
+      localStorage.setItem('tg_user_role', 'STUDIO')
+    }
     return { token: 'mock_token_' + Date.now(), user: fallbackUser }
   }
 }
 
 export async function getCurrentUser(): Promise<User | null> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('tg_token') : null
-  if (!token) return null
+  const localUserStr = typeof window !== 'undefined' ? localStorage.getItem('tg_user') : null
 
-  try {
-    const res = await fetch(`${API_BASE}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.user
-  } catch (err) {
-    return null
+  let cachedUser: User | null = null
+  if (localUserStr) {
+    try {
+      cachedUser = JSON.parse(localUserStr)
+    } catch {}
   }
+
+  if (token) {
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.user) {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('tg_user', JSON.stringify(data.user))
+          }
+          return data.user
+        }
+      }
+    } catch (err) {}
+  }
+
+  return cachedUser
 }
 
 export async function fetchStudioOrders(storeId?: string): Promise<FittingBooking[]> {

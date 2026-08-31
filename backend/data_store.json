@@ -626,6 +626,34 @@
   ],
   "stores": [
     {
+      "id": "store-rai-fashion-987",
+      "name": "Rai Fashion",
+      "area": "Washington D C",
+      "address": "452 ",
+      "postcode": "10012",
+      "distance": "0.4 mi away",
+      "distanceMiles": 0.4,
+      "rating": 5,
+      "reviewCount": 1,
+      "openingHours": "Mon–Sat: 09:00 – 19:00",
+      "dailyCapacity": 25,
+      "machines": 4,
+      "workers": 4,
+      "leadTailor": "Gaurav rai",
+      "specialties": [
+        "Custom Alterations",
+        "Precision Hemming",
+        "Express Tailoring"
+      ],
+      "retailSold": true,
+      "lat": 51.5033,
+      "lng": -0.1925,
+      "coords": {
+        "lat": 51.5033,
+        "lng": -0.1925
+      }
+    },
+    {
       "id": "store-sitarahub-private-limited-816",
       "name": "SITARAHUB PRIVATE LIMITED",
       "area": "Area 401303",
