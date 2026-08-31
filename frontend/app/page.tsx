@@ -1,24 +1,28 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AboutView } from '@/components/tailorgrid/about-view'
-import { AdminView } from '@/components/tailorgrid/admin-view'
-import { AuthModal } from '@/components/tailorgrid/auth-modal'
-import { ConfirmMeasurementView } from '@/components/tailorgrid/confirm-measurement-view'
-import { CustomerFlow } from '@/components/tailorgrid/customer-flow'
-import { makeOtp, type Screen, type StoreOption, type User } from '@/components/tailorgrid/data'
-import { Footer } from '@/components/tailorgrid/footer'
-import { ForPartnersView } from '@/components/tailorgrid/for-partners-view'
-import { Header } from '@/components/tailorgrid/header'
-import { StudioSubNav } from '@/components/tailorgrid/studio-sub-nav'
-import { HomeView } from '@/components/tailorgrid/home-view'
-import { HowItWorksView } from '@/components/tailorgrid/how-it-works-view'
-import { OrdersView } from '@/components/tailorgrid/orders-view'
-import { PartnerFlow } from '@/components/tailorgrid/partner-flow'
+import { useRouter } from 'next/navigation'
+import { AboutView } from '@/components/about-view'
+import { AdminView } from '@/components/admin-view'
+import { AuthModal } from '@/components/auth-modal'
+import { ConfirmMeasurementView } from '@/components/confirm-measurement-view'
+import { CustomerFlow } from '@/components/customer-flow'
+import { makeOtp, type Screen, type StoreOption, type User } from '@/components/data'
+import { Footer } from '@/components/footer'
+import { ForPartnersView } from '@/components/for-partners-view'
+import { Header } from '@/components/header'
+import { StudioSubNav } from '@/components/studio-sub-nav'
+import { HomeView } from '@/components/home-view'
+import { HowItWorksView } from '@/components/how-it-works-view'
+import { OrderDetailsView } from '@/components/order-details-view'
+import { OrdersView } from '@/components/orders-view'
+import { PartnerFlow } from '@/components/partner-flow'
 import { getCurrentUser } from '@/lib/api'
 
 export default function Page() {
+  const router = useRouter()
   const [screen, setScreen] = useState<Screen>('home')
+  const [createdOrderId, setCreatedOrderId] = useState<string>('ORD-2654')
   const [user, setUser] = useState<User | null>(null)
   const [isAuthOpen, setIsAuthOpen] = useState(false)
   const [authRole, setAuthRole] = useState<'CUSTOMER' | 'STUDIO'>('CUSTOMER')
@@ -60,18 +64,35 @@ export default function Page() {
       'partner',
       'admin',
       'confirm-measurement',
+      'order',
     ]
 
     const getScreenFromUrl = (): Screen => {
       if (typeof window === 'undefined') return 'home'
 
-      if (window.location.pathname === '/confirm-measurement') {
-        return 'confirm-measurement'
-      }
-
       // Check URL query param ?page=xxx
       const params = new URLSearchParams(window.location.search)
       const pageParam = params.get('page') as Screen | null
+
+      // Automatically forward legacy query parameters to official Next.js routes
+      if (pageParam === 'order') {
+        const latestOrder = localStorage.getItem('tg_latest_order')
+        let orderId = createdOrderId || 'ORD-2654'
+        if (latestOrder) {
+          try {
+            const parsed = JSON.parse(latestOrder)
+            if (parsed.id) orderId = parsed.id
+          } catch {}
+        }
+        window.location.replace(`/order/${orderId}`)
+        return 'home'
+      }
+
+      if (pageParam === 'confirm-measurement') {
+        window.location.replace('/confirm-measurement')
+        return 'home'
+      }
+
       if (pageParam && validScreens.includes(pageParam)) {
         return pageParam
       }
@@ -82,19 +103,12 @@ export default function Page() {
         return hash
       }
 
-      // Check localStorage
-      const saved = localStorage.getItem('tg_screen') as Screen | null
-      if (saved && validScreens.includes(saved)) {
-        return saved
-      }
-
+      // Root path '/' is ALWAYS home
       return 'home'
     }
 
     const initialScreen = getScreenFromUrl()
-    if (initialScreen !== 'home') {
-      setScreen(initialScreen)
-    }
+    setScreen(initialScreen)
 
     const handlePopState = () => {
       const current = getScreenFromUrl()
@@ -122,16 +136,21 @@ export default function Page() {
   const [garmentNotes, setGarmentNotes] = useState<string | undefined>()
 
   const handleNavigate = (nextScreen: Screen) => {
-    setScreen(nextScreen)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('tg_screen', nextScreen)
-      const newUrl = nextScreen === 'home'
-        ? '/'
-        : nextScreen === 'confirm-measurement'
-          ? '/confirm-measurement'
-          : `?page=${nextScreen}`
-      window.history.pushState({ screen: nextScreen }, '', newUrl)
+    if (nextScreen === 'confirm-measurement') {
+      router.push('/confirm-measurement')
+      return
     }
+    if (nextScreen === 'order') {
+      router.push(`/order/${createdOrderId || 'ORD-2654'}`)
+      return
+    }
+    if (nextScreen === 'home') {
+      router.push('/')
+      setScreen('home')
+      return
+    }
+    setScreen(nextScreen)
+    router.push(`/?page=${nextScreen}`)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -148,6 +167,9 @@ export default function Page() {
     setPrefilledGarmentId(params.garmentId)
     setPrefilledServiceId(params.serviceId)
     setPrefilledPostcode(params.city.includes('Los Angeles') ? '90210' : params.city.includes('London') ? 'W8 4EP' : '10012')
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('tg_measurement_draft', JSON.stringify(params))
+    }
   }
 
   const handleConfirmMeasurements = (data: {
@@ -159,12 +181,16 @@ export default function Page() {
     images?: string[]
     fittingMode?: string
     matchedStore?: StoreOption
+    createdOrderId?: string
   }) => {
     setPrefilledGarmentId(data.garmentId)
     setPrefilledServiceId(data.serviceId)
     setConfirmedMeasurements(data.measurements)
     setGarmentBrand(data.brand)
     setGarmentNotes(data.notes)
+    if (data.createdOrderId) {
+      setCreatedOrderId(data.createdOrderId)
+    }
     if (data.matchedStore) {
       setPrefilledStore(data.matchedStore)
     }
@@ -232,7 +258,7 @@ export default function Page() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF8F5] text-[#18191B]">
-      
+
       {/* Primary Global Navigation Header (Always Visible) */}
       <Header
         currentScreen={screen}
@@ -310,10 +336,10 @@ export default function Page() {
             initialDate={
               measurementDraft.pickupOption === 'schedule'
                 ? measurementDraft.scheduleDate.toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                  })
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                })
                 : 'Today (Immediate slot)'
             }
             initialTimeSlot={
@@ -321,6 +347,14 @@ export default function Page() {
                 ? measurementDraft.scheduleTime
                 : '11:30 AM – 01:00 PM'
             }
+          />
+        )}
+
+        {screen === 'order' && (
+          <OrderDetailsView
+            slugId={createdOrderId}
+            onGoHome={() => handleNavigate('home')}
+            onGoOrders={() => handleNavigate('orders')}
           />
         )}
 

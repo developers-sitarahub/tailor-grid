@@ -23,7 +23,7 @@ import {
 import { CityModal } from './city-modal'
 import { useCityLocation } from './use-city-location'
 import { SewingLoader } from './sewing-loader'
-import { GARMENT_CATEGORIES, type Screen } from './data'
+import { GARMENT_CATEGORIES, getClosestStoreForLocation, type Screen, type StoreOption } from './data'
 import { TrustBar } from './trust-bar'
 import { FindingStudioModal } from './finding-studio-modal'
 
@@ -365,19 +365,88 @@ export function ConfirmMeasurementView({
     setIsProcessing(true)
   }
 
-  const handleLoaderComplete = () => {
-    setIsProcessing(false)
-    onConfirmMeasurements?.({
+  const handleStudioMatched = (matchedStore: StoreOption, _orderData?: any) => {
+    const newOrderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`
+    const orderData = {
+      id: newOrderId,
+      otp: String(Math.floor(1000 + Math.random() * 9000)),
+      customerName: 'Gaurav Rai',
+      storeId: matchedStore.id,
+      storeName: matchedStore.name,
+      storeAddress: matchedStore.address + (matchedStore.area ? `, ${matchedStore.area}` : ''),
       garmentId: selectedGarmentId,
+      garmentName: currentCategory.name,
       serviceId: selectedService.id,
+      serviceName: selectedService.name,
       measurements,
       brand,
       notes,
       images: uploadedImages,
-      fittingMode: Object.keys(measurements).length > 0 ? 'custom' : 'studio',
-      matchedStore: matched,
-    })
-    go('booking')
+      city: selectedCity,
+      date: formattedDateDisplay,
+      timeSlot: selectedTime,
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`tg_order_${newOrderId}`, JSON.stringify(orderData))
+      localStorage.setItem('tg_latest_order', JSON.stringify(orderData))
+    }
+    if (onConfirmMeasurements) {
+      onConfirmMeasurements({
+        garmentId: selectedGarmentId,
+        serviceId: selectedService.id,
+        measurements,
+        brand,
+        notes,
+        images: uploadedImages,
+        fittingMode: Object.keys(measurements).length > 0 ? 'custom' : 'studio',
+        matchedStore,
+        createdOrderId: newOrderId,
+      } as any)
+    } else {
+      go('order')
+    }
+  }
+
+  const handleLoaderComplete = () => {
+    const closestStore = getClosestStoreForLocation(selectedCity)
+    const newOrderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`
+    const orderData = {
+      id: newOrderId,
+      otp: String(Math.floor(1000 + Math.random() * 9000)),
+      customerName: 'Gaurav Rai',
+      storeId: closestStore.id,
+      storeName: closestStore.name,
+      storeAddress: closestStore.address + (closestStore.area ? `, ${closestStore.area}` : ''),
+      garmentId: selectedGarmentId,
+      garmentName: currentCategory.name,
+      serviceId: selectedService.id,
+      serviceName: selectedService.name,
+      measurements,
+      brand,
+      notes,
+      images: uploadedImages,
+      city: selectedCity,
+      date: formattedDateDisplay,
+      timeSlot: selectedTime,
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`tg_order_${newOrderId}`, JSON.stringify(orderData))
+      localStorage.setItem('tg_latest_order', JSON.stringify(orderData))
+    }
+    if (onConfirmMeasurements) {
+      onConfirmMeasurements({
+        garmentId: selectedGarmentId,
+        serviceId: selectedService.id,
+        measurements,
+        brand,
+        notes,
+        images: uploadedImages,
+        fittingMode: Object.keys(measurements).length > 0 ? 'custom' : 'studio',
+        createdOrderId: newOrderId,
+      } as any)
+    } else {
+      go('order')
+    }
   }
 
   const formattedDateDisplay = scheduleDateObj.toLocaleDateString('en-US', {
@@ -645,23 +714,11 @@ export function ConfirmMeasurementView({
       </div>
       <TrustBar />
 
-      {/* Live Finding Studio Radar Animation Modal */}
-      <FindingStudioModal
-        isOpen={isFindingStudio}
-        city={selectedCity}
-        garmentId={selectedGarmentId}
-        garmentName={currentCategory.name}
-        serviceId={selectedService.id}
-        serviceName={selectedService.name}
-        price={selectedService.customerPrice}
-        measurements={measurements}
-        brand={brand}
-        notes={notes}
-        scheduleDate={scheduleDateObj}
-        scheduleTime={selectedTime}
-        images={uploadedImages}
-        onMatched={handleStudioMatched}
-        onCancel={() => setIsFindingStudio(false)}
+      {/* Full Screen Sewing Tools Animation Loader */}
+      <SewingLoader
+        active={isProcessing}
+        durationSeconds={3}
+        onComplete={handleLoaderComplete}
       />
     </div>
   )
